@@ -20,10 +20,12 @@ import java.util.Set;
  */
 public class SecurityService {
 
+
     private ImageService imageService;
+    private boolean catFound = false;
     private SecurityRepository securityRepository;
     private Set<StatusListener> statusListeners = new HashSet<>();
-    private boolean catDetected = false;
+
 
     public SecurityService(SecurityRepository securityRepository, ImageService imageService) {
         this.securityRepository = securityRepository;
@@ -39,15 +41,32 @@ public class SecurityService {
         if(armingStatus == ArmingStatus.DISARMED) {
             setAlarmStatus(AlarmStatus.NO_ALARM);
         } else {
-            for (Sensor sensor : securityRepository.getSensors()) {
-                changeSensorActivationStatus(sensor, false);
-            }
-            if(catDetected && armingStatus == ArmingStatus.ARMED_HOME){
+            if(armingStatus == ArmingStatus.ARMED_HOME && catFound){
                 setAlarmStatus(AlarmStatus.ALARM);
+            }
+            Set<Sensor> sensors = securityRepository.getSensors();
+            for (Sensor sensor : sensors) {
+                changeSensorActivationStatus(sensor, false);
             }
         }
 
         securityRepository.setArmingStatus(armingStatus);
+    }
+
+    /**
+     * Internal method to check if all sensors are inactive
+     * @return True if  all sensors are active else false
+     */
+    private boolean checkIfAllSensorsInactive(){
+        boolean allSensorsInactive = true;
+        Set<Sensor> allSensors = securityRepository.getSensors();
+        for (Sensor sensor : allSensors) {
+            if(sensor.getActive()){
+                allSensorsInactive = false;
+                break;
+            }
+        }
+        return allSensorsInactive;
     }
 
     /**
@@ -56,22 +75,13 @@ public class SecurityService {
      * @param cat True if a cat is detected, otherwise false.
      */
     private void catDetected(Boolean cat) {
+        catFound = cat;
         if(cat && getArmingStatus() == ArmingStatus.ARMED_HOME) {
             setAlarmStatus(AlarmStatus.ALARM);
-        } else if(!cat){
-            boolean allSensorsInactive = true;
-            for (Sensor sensor : securityRepository.getSensors()) {
-                if(sensor.getActive()){
-                    allSensorsInactive = false;
-                    break;
-                }
-            }
-            if(allSensorsInactive){
+        } else if(!cat && checkIfAllSensorsInactive()){
                 setAlarmStatus(AlarmStatus.NO_ALARM);
-            }
         }
 
-        catDetected = cat;
         statusListeners.forEach(sl -> sl.catDetected(cat));
     }
 

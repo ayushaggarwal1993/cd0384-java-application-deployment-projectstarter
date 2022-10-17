@@ -27,7 +27,6 @@ import static org.mockito.Mockito.*;
 @ExtendWith(MockitoExtension.class)
 public class SecurityServiceTest {
 
-    private final String random = UUID.randomUUID().toString();
 
     private SecurityService securityService;
 
@@ -39,32 +38,33 @@ public class SecurityServiceTest {
 
     private  Sensor sensor;
 
-    private Set<Sensor> getAllSensors(int count, boolean status) {
-        Set<Sensor> sensors = new HashSet<>();
-        for (int i = 0; i < count; i++) {
-            sensors.add(new Sensor(random, SensorType.DOOR));
-        }
-        sensors.forEach(sensor -> sensor.setActive(status));
-
-        return sensors;
-    }
-
 
     private Set<Sensor> getAllMixedSensors(int count) {
         Set<Sensor> sensors = new HashSet<>();
         for (int i = 0; i < count; i++) {
-            sensors.add(new Sensor(random, SensorType.DOOR));
+            Sensor sensor = new Sensor("Test"+i, SensorType.DOOR);
+            sensor.setActive(new Random().nextBoolean());
+            sensors.add(sensor);
+
         }
 
-        sensors.forEach(sensor -> sensor.setActive(new Random().nextBoolean()));
+        return sensors;
+    }
 
+    private Set<Sensor> getRandomSensorsSameStatus(int number, boolean status) {
+        Set<Sensor> sensors = new HashSet<>();
+        for (int i = 0; i < number; i++) {
+            Sensor sensor = new Sensor("Test"+i,SensorType.MOTION);
+            sensors.add(sensor);
+            sensor.setActive(status);
+        }
         return sensors;
     }
 
     @BeforeEach
     public void init(){
         securityService = new SecurityService(securityRepository,imageService);
-        sensor = new Sensor("Test",SensorType.DOOR);
+        sensor = new Sensor("Testing",SensorType.WINDOW);
     }
 
     //Test1
@@ -90,7 +90,7 @@ public class SecurityServiceTest {
     //Test3
     @Test
     public void ifAlarmIsPendingAlarm_sensorIsInActivated_systemInNoAlarm(){
-        Set<Sensor> allSensors = getAllSensors(4, false);
+        Set<Sensor> allSensors = getRandomSensorsSameStatus(4, false);
         Sensor lastSensor = allSensors.iterator().next();
         lastSensor.setActive(true);
         when(securityRepository.getSensors()).thenReturn(allSensors);
@@ -130,7 +130,7 @@ public class SecurityServiceTest {
     public void ifImageServiceIdentifiesCat_systemIsArmedHome_putSystemInAlarmStatus(){
         when(securityRepository.getArmingStatus()).thenReturn(ArmingStatus.ARMED_HOME);
         when(imageService.imageContainsCat(any(BufferedImage.class),anyFloat())).thenReturn(true);
-        BufferedImage image = new BufferedImage(256, 256, BufferedImage.TYPE_INT_RGB);
+        BufferedImage image = new BufferedImage(123, 789, BufferedImage.TYPE_BYTE_INDEXED);
         securityService.processImage(image);
         verify(securityRepository, times(1)).setAlarmStatus(AlarmStatus.ALARM);
     }
@@ -138,10 +138,10 @@ public class SecurityServiceTest {
     //Test 8
     @Test
     public void ifImageServiceDoesNotIdentifiesCat_sensorsAreNotActive_putSystemInNoAlarm(){
-        Set<Sensor> sensors = getAllSensors(3, false);
+        Set<Sensor> sensors = getRandomSensorsSameStatus(3, false);
         when(securityRepository.getSensors()).thenReturn(sensors);
         when(imageService.imageContainsCat(any(BufferedImage.class),anyFloat())).thenReturn(false);
-        BufferedImage image = new BufferedImage(256, 256, BufferedImage.TYPE_INT_RGB);
+        BufferedImage image = new BufferedImage(123, 789, BufferedImage.TYPE_BYTE_INDEXED);
         securityService.processImage(image);
         verify(securityRepository, times(1)).setAlarmStatus(AlarmStatus.NO_ALARM);
     }
@@ -186,7 +186,8 @@ public class SecurityServiceTest {
     public void ifSystemIsArmedHome_cameraShowsCat_setAlarmStatusToAlarm(){
         when(securityRepository.getArmingStatus()).thenReturn(ArmingStatus.ARMED_HOME);
         when(imageService.imageContainsCat(any(BufferedImage.class),anyFloat())).thenReturn(true);
-        securityService.processImage(new BufferedImage(256, 256, BufferedImage.TYPE_INT_RGB));
+        BufferedImage image = new BufferedImage(123, 789, BufferedImage.TYPE_BYTE_INDEXED);
+        securityService.processImage(image);
         verify(securityRepository, times(1)).setAlarmStatus(AlarmStatus.ALARM);
     }
 
