@@ -38,7 +38,7 @@ public class SecurityServiceTest {
 
     private  Sensor sensor;
 
-
+    // This method will be used to generate sensors of mixed status
     private Set<Sensor> getAllMixedSensors(int count) {
         Set<Sensor> sensors = new HashSet<>();
         for (int i = 0; i < count; i++) {
@@ -51,6 +51,7 @@ public class SecurityServiceTest {
         return sensors;
     }
 
+    //This method will be used to generate sensors of same status
     private Set<Sensor> getRandomSensorsSameStatus(int number, boolean status) {
         Set<Sensor> sensors = new HashSet<>();
         for (int i = 0; i < number; i++) {
