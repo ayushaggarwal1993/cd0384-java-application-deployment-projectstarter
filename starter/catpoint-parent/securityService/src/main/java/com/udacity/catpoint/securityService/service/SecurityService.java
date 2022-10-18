@@ -10,6 +10,7 @@ import com.udacity.catpoint.securityService.data.Sensor;
 import java.awt.image.BufferedImage;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.concurrent.ConcurrentSkipListSet;
 
 /**
  * Service that receives information about changes to the security system. Responsible for
@@ -44,10 +45,9 @@ public class SecurityService {
             if(armingStatus == ArmingStatus.ARMED_HOME && catFound){
                 setAlarmStatus(AlarmStatus.ALARM);
             }
-            Set<Sensor> sensors = securityRepository.getSensors();
-            for (Sensor sensor : sensors) {
-                changeSensorActivationStatus(sensor, false);
-            }
+            // ConcurrentSkipListSet is used to solve concurrency issue with GUI
+            ConcurrentSkipListSet<Sensor> allSensors = new ConcurrentSkipListSet<>(securityRepository.getSensors());
+            allSensors.forEach(sensor -> changeSensorActivationStatus(sensor, false));
         }
 
         securityRepository.setArmingStatus(armingStatus);
@@ -79,7 +79,7 @@ public class SecurityService {
         if(cat && getArmingStatus() == ArmingStatus.ARMED_HOME) {
             setAlarmStatus(AlarmStatus.ALARM);
         } else if(!cat && checkIfAllSensorsInactive()){
-                setAlarmStatus(AlarmStatus.NO_ALARM);
+            setAlarmStatus(AlarmStatus.NO_ALARM);
         }
 
         statusListeners.forEach(sl -> sl.catDetected(cat));
@@ -158,6 +158,7 @@ public class SecurityService {
         }
         sensor.setActive(active);
         securityRepository.updateSensor(sensor);
+        statusListeners.forEach(sl -> sl.sensorStatusChanged());
     }
 
     /**

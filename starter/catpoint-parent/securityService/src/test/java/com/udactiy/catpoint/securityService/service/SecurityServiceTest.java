@@ -18,7 +18,6 @@ import java.awt.image.BufferedImage;
 import java.util.HashSet;
 import java.util.Random;
 import java.util.Set;
-import java.util.UUID;
 import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -127,12 +126,14 @@ public class SecurityServiceTest {
     }
 
     //Test 7
-    @Test
-    public void ifImageServiceIdentifiesCat_systemIsArmedHome_putSystemInAlarmStatus(){
-        when(securityRepository.getArmingStatus()).thenReturn(ArmingStatus.ARMED_HOME);
+    @ParameterizedTest
+    @EnumSource(value = ArmingStatus.class, names = {"DISARMED","ARMED_AWAY"})
+    public void ifImageServiceIdentifiesCat_systemIsArmedHome_putSystemInAlarmStatus(ArmingStatus status){
+        when(securityRepository.getArmingStatus()).thenReturn(status);
         when(imageService.imageContainsCat(any(BufferedImage.class),anyFloat())).thenReturn(true);
         BufferedImage image = new BufferedImage(123, 789, BufferedImage.TYPE_BYTE_INDEXED);
         securityService.processImage(image);
+        securityService.setArmingStatus(ArmingStatus.ARMED_HOME);
         verify(securityRepository, times(1)).setAlarmStatus(AlarmStatus.ALARM);
     }
 
@@ -190,6 +191,19 @@ public class SecurityServiceTest {
         BufferedImage image = new BufferedImage(123, 789, BufferedImage.TYPE_BYTE_INDEXED);
         securityService.processImage(image);
         verify(securityRepository, times(1)).setAlarmStatus(AlarmStatus.ALARM);
+    }
+
+
+
+    //Test 12
+    @Test
+    public void ifImageServiceDoesNotIdentifiesCat_allSensorsAreActive_noChangeToSystem(){
+        Set<Sensor> sensors = getRandomSensorsSameStatus(4,true);
+        when(securityRepository.getSensors()).thenReturn(sensors);
+        when(imageService.imageContainsCat(any(BufferedImage.class),anyFloat())).thenReturn(false);
+        BufferedImage image = new BufferedImage(123, 789, BufferedImage.TYPE_BYTE_INDEXED);
+        securityService.processImage(image);
+        verify(securityRepository, never()).setAlarmStatus(any(AlarmStatus.class));
     }
 
 
